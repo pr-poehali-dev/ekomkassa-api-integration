@@ -128,18 +128,28 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
         
         recipient_clean = recipient.replace('+', '').replace('-', '').replace(' ', '')
         
+        request_data = json.dumps({
+            'recipient': recipient_clean,
+            'body': message
+        })
+        
+        print(f"[WAPPI] Sending request:")
+        print(f"[WAPPI] URL: https://wappi.pro/api/sync/message/send?profile_id={wappi_profile_id}")
+        print(f"[WAPPI] Headers: Authorization: {wappi_token[:10]}...")
+        print(f"[WAPPI] Data: {request_data}")
+        
         response = requests.post(
             'https://wappi.pro/api/sync/message/send',
             params={'profile_id': wappi_profile_id},
             headers={
                 'Authorization': wappi_token
             },
-            data=json.dumps({
-                'recipient': recipient_clean,
-                'body': message
-            }),
+            data=request_data,
             timeout=10
         )
+        
+        print(f"[WAPPI] Response status: {response.status_code}")
+        print(f"[WAPPI] Response body: {response.text}")
         
         if response.status_code == 200:
             try:
