@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -26,6 +28,10 @@ const Index = () => {
   
   const [providers, setProviders] = useState<any[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [providerToDelete, setProviderToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getProviderIcon = (providerType: string, providerCode: string) => {
     if (providerCode.includes('whatsapp')) return 'Phone';
@@ -137,6 +143,32 @@ const Index = () => {
   useEffect(() => {
     loadProviders();
   }, []);
+
+  const deleteProvider = async () => {
+    if (!providerToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`https://functions.poehali.dev/c55cf921-d1ec-4fc7-a6e2-59c730988a1e?provider_code=${providerToDelete.code}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setDeleteDialogOpen(false);
+        setProviderToDelete(null);
+        await loadProviders();
+      }
+    } catch (error) {
+      console.error('Failed to delete provider:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const openProviderConfig = (provider: any) => {
     setSelectedProvider(provider);
@@ -384,9 +416,38 @@ const Index = () => {
                           <Icon name="Settings" size={16} className="mr-2" />
                           Настроить
                         </Button>
-                        <Button variant="outline" size="sm">
-                          <Icon name="MoreVertical" size={16} />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Icon name="MoreVertical" size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openProviderConfig(provider)}>
+                              <Icon name="Settings" size={14} className="mr-2" />
+                              Настроить
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // TODO: Implement view logs
+                              }}
+                            >
+                              <Icon name="FileText" size={14} className="mr-2" />
+                              Логи
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                setProviderToDelete(provider);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Icon name="Trash2" size={14} className="mr-2" />
+                              Удалить
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </Card>
                       ))}
@@ -938,6 +999,52 @@ const Index = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
+                <Icon name="AlertTriangle" size={20} className="text-destructive" />
+              </div>
+              <span>Удалить провайдера?</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {providerToDelete && (
+                <>
+                  Вы действительно хотите удалить провайдера <strong>{providerToDelete.name}</strong>?
+                  <br />
+                  <br />
+                  Это действие нельзя отменить. Все настройки и история отправок будут утеряны.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteProvider();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                <>
+                  <Icon name="Trash2" size={16} className="mr-2" />
+                  Удалить
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

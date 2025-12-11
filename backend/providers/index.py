@@ -42,7 +42,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
                 'Access-Control-Max-Age': '86400'
             },
@@ -230,6 +230,49 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'provider_name': result['provider_name'],
                     'is_active': result['is_active'],
                     'message': 'Provider configuration saved successfully'
+                }),
+                'isBase64Encoded': False
+            }
+        
+        elif method == 'DELETE':
+            params = event.get('queryStringParameters') or {}
+            provider_code = params.get('provider_code')
+            
+            if not provider_code:
+                conn.close()
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Missing provider_code parameter'}),
+                    'isBase64Encoded': False
+                }
+            
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM providers WHERE provider_code = %s RETURNING provider_code, provider_name",
+                (provider_code,)
+            )
+            result = cur.fetchone()
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            if not result:
+                return {
+                    'statusCode': 404,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Provider not found'}),
+                    'isBase64Encoded': False
+                }
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({
+                    'success': True,
+                    'provider_code': result['provider_code'],
+                    'provider_name': result['provider_name'],
+                    'message': f"Provider {result['provider_name']} deleted successfully"
                 }),
                 'isBase64Encoded': False
             }

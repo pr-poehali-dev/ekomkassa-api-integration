@@ -60,6 +60,19 @@
         "success": true
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test delete provider",
+      "method": "DELETE",
+      "path": "/?provider_code=test_provider_new",
+      "headers": {
+        "X-Api-Key": "ek_live_j8h3k2n4m5p6q7r8"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }
