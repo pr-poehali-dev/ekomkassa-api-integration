@@ -195,8 +195,13 @@ def get_postbox_credentials(provider: str, conn) -> Tuple[Optional[str], Optiona
     config = result['config']
     return config.get('postbox_access_key'), config.get('postbox_secret_key'), config.get('postbox_from_email')
 
-def send_via_postbox(recipient: str, message: str, subject: str, provider: str, conn) -> Tuple[int, str]:
-    """Отправляет email через Yandex Postbox API (AWS SES compatible)"""
+def send_via_postbox(recipient: str, message: str, subject: str, provider: str, conn,
+                    template_name: Optional[str] = None, template_data: Optional[Dict] = None) -> Tuple[int, str]:
+    """Отправляет email через Yandex Postbox API (AWS SES compatible)
+    Поддерживает два режима:
+    - Обычная отправка (SendEmail с Simple) - если template_name не указан
+    - Отправка по шаблону (SendEmail с Template) - если указан template_name
+    """
     try:
         import boto3
         from botocore.exceptions import ClientError
@@ -206,11 +211,6 @@ def send_via_postbox(recipient: str, message: str, subject: str, provider: str, 
         if not access_key or not secret_key or not from_email:
             return 500, json.dumps({"error": "Postbox credentials not configured"})
         
-        print(f"[POSTBOX] Sending email:")
-        print(f"[POSTBOX] From: {from_email}")
-        print(f"[POSTBOX] To: {recipient}")
-        print(f"[POSTBOX] Subject: {subject}")
-        
         client = boto3.client(
             'sesv2',
             region_name='ru-central1',
@@ -219,26 +219,51 @@ def send_via_postbox(recipient: str, message: str, subject: str, provider: str, 
             aws_secret_access_key=secret_key
         )
         
-        response = client.send_email(
-            FromEmailAddress=from_email,
-            Destination={
-                'ToAddresses': [recipient]
-            },
-            Content={
-                'Simple': {
-                    'Subject': {
-                        'Data': subject,
-                        'Charset': 'UTF-8'
-                    },
-                    'Body': {
-                        'Text': {
-                            'Data': message,
+        if template_name:
+            print(f"[POSTBOX] Sending templated email:")
+            print(f"[POSTBOX] Template: {template_name}")
+            print(f"[POSTBOX] From: {from_email}")
+            print(f"[POSTBOX] To: {recipient}")
+            print(f"[POSTBOX] Data: {template_data}")
+            
+            response = client.send_email(
+                FromEmailAddress=from_email,
+                Destination={
+                    'ToAddresses': [recipient]
+                },
+                Content={
+                    'Template': {
+                        'TemplateName': template_name,
+                        'TemplateData': json.dumps(template_data or {})
+                    }
+                }
+            )
+        else:
+            print(f"[POSTBOX] Sending simple email:")
+            print(f"[POSTBOX] From: {from_email}")
+            print(f"[POSTBOX] To: {recipient}")
+            print(f"[POSTBOX] Subject: {subject}")
+            
+            response = client.send_email(
+                FromEmailAddress=from_email,
+                Destination={
+                    'ToAddresses': [recipient]
+                },
+                Content={
+                    'Simple': {
+                        'Subject': {
+                            'Data': subject,
                             'Charset': 'UTF-8'
+                        },
+                        'Body': {
+                            'Text': {
+                                'Data': message,
+                                'Charset': 'UTF-8'
+                            }
                         }
                     }
                 }
-            }
-        )
+            )
         
         message_id = response.get('MessageId', '')
         print(f"[POSTBOX] Success! MessageId: {message_id}")
@@ -269,7 +294,9 @@ def simulate_provider_send(provider: str, recipient: str, message: str) -> Tuple
         return 500, json.dumps({"success": False, "error": "Provider temporary unavailable"})
 
 def attempt_delivery(message_id: str, provider: str, recipient: str, 
-                    message_text: str, attempt_number: int, conn) -> Tuple[bool, Optional[str]]:
+                    message_text: str, attempt_number: int, conn,
+                    template_name: Optional[str] = None, template_data: Optional[Dict] = None,
+                    subject: Optional[str] = None) -> Tuple[bool, Optional[str]]:
     """Пытается доставить сообщение"""
     start_time = time.time()
     
@@ -284,8 +311,11 @@ def attempt_delivery(message_id: str, provider: str, recipient: str,
         if provider_type in ['whatsapp_business', 'telegram_bot', 'wappi', 'max']:
             status_code, response_body = send_via_wappi(recipient, message_text, provider, conn)
         elif provider_type == 'yandex_postbox':
-            subject = "Уведомление"
-            status_code, response_body = send_via_postbox(recipient, message_text, subject, provider, conn)
+            email_subject = subject or "Уведомление"
+            status_code, response_body = send_via_postbox(
+                recipient, message_text, email_subject, provider, conn,
+                template_name=template_name, template_data=template_data
+            )
         else:
             status_code, response_body = simulate_provider_send(provider, recipient, message_text)
         
@@ -318,8 +348,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "provider": "sms_gateway|whatsapp_business|telegram_bot|email_service|push_service",
         "recipient": "+79991234567 или email или chat_id",
         "message": "Текст сообщения",
-        "metadata": {} (опционально)
+        "metadata": {} (опционально),
+        "subject": "Тема письма" (опционально, для email),
+        "template_name": "имя_шаблона" (опционально, для Postbox),
+        "template_data": {"key": "value"} (опционально, данные для шаблона)
     }
+    
+    Для Yandex Postbox:
+    - Если указан template_name - отправка по шаблону (SendEmail с Template)
+    - Если template_name не указан - обычное письмо (SendEmail с Simple)
     
     Headers:
         X-Api-Key: ek_live_... или ek_test_...
@@ -377,6 +414,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         recipient = body_data.get('recipient')
         message_text = body_data.get('message')
         metadata = body_data.get('metadata', {})
+        template_name = body_data.get('template_name')
+        template_data = body_data.get('template_data')
+        subject = body_data.get('subject')
         
         if not all([provider, recipient, message_text]):
             conn.close()
@@ -432,7 +472,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 time.sleep(retry_delays[attempt - 1])
             
             success, error = attempt_delivery(
-                message_id, provider, recipient, message_text, attempt, conn
+                message_id, provider, recipient, message_text, attempt, conn,
+                template_name=template_name, template_data=template_data, subject=subject
             )
             
             if success:
