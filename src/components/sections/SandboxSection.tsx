@@ -30,7 +30,7 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
     setResponse(null);
 
     try {
-      const response = await fetch('https://functions.poehali.dev/5b9c6dbb-fef6-4a99-839e-d2c00f64c45b', {
+      const response = await fetch('https://functions.poehali.dev/ace36e55-b169-41f2-9d2b-546f92221bb7', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
