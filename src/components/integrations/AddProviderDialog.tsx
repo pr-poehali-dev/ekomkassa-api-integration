@@ -72,7 +72,24 @@ const AddProviderDialog = ({
                 <SelectValue placeholder="Выберите провайдера" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="wappi">Wappi (WhatsApp, Telegram, MAX)</SelectItem>
+                <SelectItem value="whatsapp_business">
+                  <div className="flex items-center gap-2">
+                    <Icon name="Phone" size={16} />
+                    <span>WhatsApp (Wappi)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="telegram_bot">
+                  <div className="flex items-center gap-2">
+                    <Icon name="Send" size={16} />
+                    <span>Telegram (Wappi)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="max">
+                  <div className="flex items-center gap-2">
+                    <Icon name="MessageCircle" size={16} />
+                    <span>MAX (Wappi)</span>
+                  </div>
+                </SelectItem>
                 <SelectItem value="sms">SMS Gateway</SelectItem>
                 <SelectItem value="email">Email SMTP</SelectItem>
                 <SelectItem value="push">Push Notifications</SelectItem>
@@ -84,7 +101,7 @@ const AddProviderDialog = ({
             </p>
           </div>
 
-          {newProviderType === 'wappi' && (
+          {(newProviderType === 'whatsapp_business' || newProviderType === 'telegram_bot' || newProviderType === 'max') && (
             <>
               <div className="p-4 bg-muted/50 rounded-lg border border-border">
                 <div className="flex items-start gap-3">
@@ -168,7 +185,9 @@ const AddProviderDialog = ({
               
               const generatedCode = newProviderName.toLowerCase().replace(/\s+/g, '_');
               
-              if (newProviderType === 'wappi' && (!newProviderWappiToken || !newProviderWappiProfileId)) {
+              const isWappiProvider = ['whatsapp_business', 'telegram_bot', 'max'].includes(newProviderType);
+              
+              if (isWappiProvider && (!newProviderWappiToken || !newProviderWappiProfileId)) {
                 return;
               }
 
@@ -176,7 +195,7 @@ const AddProviderDialog = ({
               try {
                 const config: any = {};
                 
-                if (newProviderType === 'wappi') {
+                if (isWappiProvider) {
                   config.wappi_token = newProviderWappiToken;
                   config.wappi_profile_id = newProviderWappiProfileId;
                 }
@@ -214,7 +233,7 @@ const AddProviderDialog = ({
             disabled={
               !newProviderName || 
               !newProviderType || 
-              (newProviderType === 'wappi' && (!newProviderWappiToken || !newProviderWappiProfileId)) ||
+              (['whatsapp_business', 'telegram_bot', 'max'].includes(newProviderType) && (!newProviderWappiToken || !newProviderWappiProfileId)) ||
               isSaving
             }
           >

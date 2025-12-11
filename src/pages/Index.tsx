@@ -147,6 +147,8 @@ const Index = () => {
             connectionStatus = 'error';
           }
           
+          const usesWappi = ['whatsapp_business', 'telegram_bot', 'max', 'wappi'].includes(p.provider_type);
+          
           return {
             id: index + 1,
             name: p.provider_name,
@@ -154,7 +156,7 @@ const Index = () => {
             status: connectionStatus,
             requests: 0,
             code: p.provider_code,
-            usesWappi: p.provider_type === 'wappi',
+            usesWappi: usesWappi,
             lastAttemptAt: p.last_attempt_at
           };
         });
