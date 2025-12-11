@@ -23,15 +23,19 @@ const Index = () => {
   const [newProviderType, setNewProviderType] = useState('');
   const [newProviderWappiToken, setNewProviderWappiToken] = useState('');
   const [newProviderWappiProfileId, setNewProviderWappiProfileId] = useState('');
+  
+  const [providers, setProviders] = useState<any[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
 
-  const providers = [
-    { id: 1, name: 'SMS Gateway', icon: 'MessageSquare', status: 'active', requests: 1247, code: 'sms_gateway', usesWappi: false },
-    { id: 2, name: 'WhatsApp Business', icon: 'Phone', status: 'active', requests: 892, code: 'whatsapp_business', usesWappi: true },
-    { id: 3, name: 'Telegram Bot', icon: 'Send', status: 'active', requests: 2156, code: 'telegram_bot', usesWappi: true },
-    { id: 4, name: 'Push Notifications', icon: 'Bell', status: 'inactive', requests: 0, code: 'push_service', usesWappi: false },
-    { id: 5, name: 'Email Service', icon: 'Mail', status: 'active', requests: 634, code: 'email_service', usesWappi: false },
-    { id: 6, name: 'MAX Messenger', icon: 'MessageCircle', status: 'inactive', requests: 0, code: 'wappi', usesWappi: true },
-  ];
+  const getProviderIcon = (providerType: string, providerCode: string) => {
+    if (providerCode.includes('whatsapp')) return 'Phone';
+    if (providerCode.includes('telegram')) return 'Send';
+    if (providerCode.includes('sms')) return 'MessageSquare';
+    if (providerCode.includes('email')) return 'Mail';
+    if (providerCode.includes('push')) return 'Bell';
+    if (providerCode.includes('wappi') || providerCode.includes('max')) return 'MessageCircle';
+    return 'Plug';
+  };
 
   const apiKeys = [
     { id: 1, name: 'Ekomkassa Production', key: 'ek_live_j8h3k2n4m5p6q7r8', created: '2024-12-10', lastUsed: '1 час назад' },
@@ -85,8 +89,8 @@ const Index = () => {
     }
   };
 
-  const loadProviderConfigs = async () => {
-    setIsLoadingConfigs(true);
+  const loadProviders = async () => {
+    setIsLoadingProviders(true);
     try {
       const response = await fetch('https://functions.poehali.dev/c55cf921-d1ec-4fc7-a6e2-59c730988a1e', {
         headers: {
@@ -96,17 +100,28 @@ const Index = () => {
       const data = await response.json();
       if (data.success && data.providers) {
         const configs: Record<string, boolean> = {};
-        data.providers.forEach((provider: any) => {
-          if (provider.config && Object.keys(provider.config).length > 0) {
-            configs[provider.provider_code] = true;
+        const providersData = data.providers.map((p: any, index: number) => {
+          const hasConfig = p.config && Object.keys(p.config).length > 0;
+          if (hasConfig) {
+            configs[p.provider_code] = true;
           }
+          return {
+            id: index + 1,
+            name: p.provider_name,
+            icon: getProviderIcon(p.provider_type, p.provider_code),
+            status: p.is_active ? 'active' : 'inactive',
+            requests: 0,
+            code: p.provider_code,
+            usesWappi: p.provider_type === 'wappi'
+          };
         });
+        setProviders(providersData);
         setProviderConfigs(configs);
       }
     } catch (error) {
-      console.error('Failed to load provider configs:', error);
+      console.error('Failed to load providers:', error);
     } finally {
-      setIsLoadingConfigs(false);
+      setIsLoadingProviders(false);
     }
   };
 
@@ -115,12 +130,12 @@ const Index = () => {
       loadLogs();
     }
     if (activeSection === 'providers') {
-      loadProviderConfigs();
+      loadProviders();
     }
   }, [activeSection]);
 
   useEffect(() => {
-    loadProviderConfigs();
+    loadProviders();
   }, []);
 
   const openProviderConfig = (provider: any) => {
@@ -152,7 +167,7 @@ const Index = () => {
         setConfigDialogOpen(false);
         setWappiToken('');
         setWappiProfileId('');
-        await loadProviderConfigs();
+        await loadProviders();
       } else {
         console.error('Failed to save config:', data.error);
       }
@@ -311,8 +326,23 @@ const Index = () => {
               )}
 
               {activeSection === 'providers' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {providers.map((provider) => (
+                <>
+                  {isLoadingProviders ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Icon name="Loader2" size={32} className="animate-spin text-primary" />
+                    </div>
+                  ) : providers.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Icon name="Inbox" size={48} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
+                      <p className="text-muted-foreground mb-4">Провайдеры не найдены</p>
+                      <Button onClick={() => setAddProviderDialogOpen(true)}>
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Добавить первого провайдера
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {providers.map((provider) => (
                     <Card key={provider.id} className="p-6 bg-card/50 backdrop-blur-sm border-border hover:shadow-lg hover:shadow-primary/20 transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -359,8 +389,10 @@ const Index = () => {
                         </Button>
                       </div>
                     </Card>
-                  ))}
-                </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {activeSection === 'keys' && (
@@ -875,7 +907,7 @@ const Index = () => {
                     setNewProviderType('');
                     setNewProviderWappiToken('');
                     setNewProviderWappiProfileId('');
-                    await loadProviderConfigs();
+                    await loadProviders();
                   }
                 } catch (error) {
                   console.error('Failed to add provider:', error);
