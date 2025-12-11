@@ -102,26 +102,26 @@ def update_message_status(message_id: str, status: str, attempts: int,
     conn.commit()
     cur.close()
 
-def get_wappi_credentials(provider: str, conn) -> Tuple[Optional[str], Optional[str]]:
-    """Получает Wappi credentials из конфига провайдера"""
+def get_wappi_credentials(provider: str, conn) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Получает Wappi credentials и тип провайдера из конфига"""
     cur = conn.cursor()
     cur.execute(
-        "SELECT config FROM providers WHERE provider_code = %s",
+        "SELECT config, provider_type FROM providers WHERE provider_code = %s",
         (provider,)
     )
     result = cur.fetchone()
     cur.close()
     
     if not result or not result['config']:
-        return None, None
+        return None, None, None
     
     config = result['config']
-    return config.get('wappi_token'), config.get('wappi_profile_id')
+    return config.get('wappi_token'), config.get('wappi_profile_id'), result['provider_type']
 
 def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[int, str]:
     """Отправляет сообщение через Wappi API"""
     try:
-        wappi_token, wappi_profile_id = get_wappi_credentials(provider, conn)
+        wappi_token, wappi_profile_id, provider_type = get_wappi_credentials(provider, conn)
         
         if not wappi_token or not wappi_profile_id:
             return 500, json.dumps({"error": "Wappi credentials not configured"})
@@ -133,7 +133,7 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
             'wappi': 'https://wappi.pro/api/sync/message/send'
         }
         
-        api_url = endpoint_map.get(provider, 'https://wappi.pro/api/sync/message/send')
+        api_url = endpoint_map.get(provider_type, 'https://wappi.pro/api/sync/message/send')
         
         recipient_clean = recipient.replace('+', '').replace('-', '').replace(' ', '')
         
@@ -143,7 +143,8 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
         })
         
         print(f"[WAPPI] Sending request:")
-        print(f"[WAPPI] Provider: {provider}")
+        print(f"[WAPPI] Provider code: {provider}")
+        print(f"[WAPPI] Provider type: {provider_type}")
         print(f"[WAPPI] URL: {api_url}?profile_id={wappi_profile_id}")
         print(f"[WAPPI] Headers: Authorization: {wappi_token[:10]}...")
         print(f"[WAPPI] Data: {request_data}")
