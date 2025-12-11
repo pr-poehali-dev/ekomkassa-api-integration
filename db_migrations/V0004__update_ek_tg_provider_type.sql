@@ -1,0 +1,1 @@
+UPDATE providers SET provider_type = 'telegram_bot' WHERE provider_code = 'ek_tg';
