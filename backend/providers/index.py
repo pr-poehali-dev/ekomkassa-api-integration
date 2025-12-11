@@ -154,6 +154,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             body_data = json.loads(event.get('body', '{}'))
             
             provider_code = body_data.get('provider_code')
+            provider_name = body_data.get('provider_name')
+            provider_type = body_data.get('provider_type')
             wappi_token = body_data.get('wappi_token')
             wappi_profile_id = body_data.get('wappi_profile_id')
             
@@ -173,13 +175,39 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 config['wappi_profile_id'] = wappi_profile_id
             
             cur = conn.cursor()
+            
             cur.execute(
-                """UPDATE providers 
-                SET config = %s, updated_at = NOW(), is_active = true
-                WHERE provider_code = %s
-                RETURNING provider_code, provider_name, is_active""",
-                (json.dumps(config), provider_code)
+                "SELECT provider_code FROM providers WHERE provider_code = %s",
+                (provider_code,)
             )
+            existing = cur.fetchone()
+            
+            if existing:
+                cur.execute(
+                    """UPDATE providers 
+                    SET config = %s, updated_at = NOW(), is_active = true
+                    WHERE provider_code = %s
+                    RETURNING provider_code, provider_name, is_active""",
+                    (json.dumps(config), provider_code)
+                )
+            else:
+                if not provider_name:
+                    conn.close()
+                    return {
+                        'statusCode': 400,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'Missing provider_name for new provider'}),
+                        'isBase64Encoded': False
+                    }
+                
+                cur.execute(
+                    """INSERT INTO providers 
+                    (provider_code, provider_name, provider_type, config, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, true, NOW(), NOW())
+                    RETURNING provider_code, provider_name, is_active""",
+                    (provider_code, provider_name, provider_type or 'custom', json.dumps(config))
+                )
+            
             result = cur.fetchone()
             conn.commit()
             cur.close()
@@ -187,9 +215,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             if not result:
                 return {
-                    'statusCode': 404,
+                    'statusCode': 500,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'error': 'Provider not found'}),
+                    'body': json.dumps({'error': 'Failed to save provider'}),
                     'isBase64Encoded': False
                 }
             
