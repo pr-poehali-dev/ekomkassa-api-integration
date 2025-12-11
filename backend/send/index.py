@@ -141,6 +141,16 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
             timeout=10
         )
         
+        if response.status_code == 200:
+            try:
+                response_data = response.json()
+                if response_data.get('status') == 'done':
+                    return 200, response.text
+                else:
+                    return 500, response.text
+            except:
+                return response.status_code, response.text
+        
         return response.status_code, response.text
         
     except requests.exceptions.Timeout:
@@ -166,7 +176,7 @@ def attempt_delivery(message_id: str, provider: str, recipient: str,
     start_time = time.time()
     
     try:
-        if provider in ['whatsapp_business', 'telegram_bot', 'wappi']:
+        if provider in ['whatsapp_business', 'telegram_bot', 'wappi', 'max']:
             status_code, response_body = send_via_wappi(recipient, message_text, provider, conn)
         else:
             status_code, response_body = simulate_provider_send(provider, recipient, message_text)
