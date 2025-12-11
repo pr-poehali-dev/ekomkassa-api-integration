@@ -18,6 +18,12 @@ interface AddProviderDialogProps {
   setNewProviderWappiToken: (token: string) => void;
   newProviderWappiProfileId: string;
   setNewProviderWappiProfileId: (id: string) => void;
+  newProviderPostboxAccessKey: string;
+  setNewProviderPostboxAccessKey: (key: string) => void;
+  newProviderPostboxSecretKey: string;
+  setNewProviderPostboxSecretKey: (key: string) => void;
+  newProviderPostboxFromEmail: string;
+  setNewProviderPostboxFromEmail: (email: string) => void;
   isSaving: boolean;
   setIsSaving: (saving: boolean) => void;
   loadProviders: () => void;
@@ -36,6 +42,12 @@ const AddProviderDialog = ({
   setNewProviderWappiToken,
   newProviderWappiProfileId,
   setNewProviderWappiProfileId,
+  newProviderPostboxAccessKey,
+  setNewProviderPostboxAccessKey,
+  newProviderPostboxSecretKey,
+  setNewProviderPostboxSecretKey,
+  newProviderPostboxFromEmail,
+  setNewProviderPostboxFromEmail,
   isSaving,
   setIsSaving,
   loadProviders
@@ -108,6 +120,12 @@ const AddProviderDialog = ({
                     <span>MAX (Wappi)</span>
                   </div>
                 </SelectItem>
+                <SelectItem value="yandex_postbox">
+                  <div className="flex items-center gap-2">
+                    <Icon name="Mail" size={16} />
+                    <span>Яндекс Postbox API</span>
+                  </div>
+                </SelectItem>
                 <SelectItem value="sms">SMS Gateway</SelectItem>
                 <SelectItem value="email">Email SMTP</SelectItem>
                 <SelectItem value="push">Push Notifications</SelectItem>
@@ -166,7 +184,70 @@ const AddProviderDialog = ({
             </>
           )}
 
-          {newProviderType && newProviderType !== 'wappi' && (
+          {newProviderType === 'yandex_postbox' && (
+            <>
+              <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-start gap-3">
+                  <Icon name="Info" size={20} className="text-primary mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium mb-1">Настройки Yandex Postbox:</p>
+                    <p className="text-muted-foreground mb-2">
+                      Для работы через Yandex Postbox необходимо указать Access Key, Secret Key и адрес отправителя
+                    </p>
+                    <a 
+                      href="https://yandex.cloud/ru/docs/postbox/quickstart" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      Инструкция по настройке
+                      <Icon name="ExternalLink" size={12} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-postbox-access-key">Access Key ID</Label>
+                <Input
+                  id="new-postbox-access-key"
+                  placeholder="Введите Access Key ID"
+                  value={newProviderPostboxAccessKey}
+                  onChange={(e) => setNewProviderPostboxAccessKey(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-postbox-secret-key">Secret Access Key</Label>
+                <Input
+                  id="new-postbox-secret-key"
+                  type="password"
+                  placeholder="Введите Secret Access Key"
+                  value={newProviderPostboxSecretKey}
+                  onChange={(e) => setNewProviderPostboxSecretKey(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-postbox-from-email">Адрес отправителя (From)</Label>
+                <Input
+                  id="new-postbox-from-email"
+                  type="email"
+                  placeholder="noreply@example.com"
+                  value={newProviderPostboxFromEmail}
+                  onChange={(e) => setNewProviderPostboxFromEmail(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Адрес должен быть верифицирован в Postbox
+                </p>
+              </div>
+            </>
+          )}
+
+          {newProviderType && !['whatsapp_business', 'telegram_bot', 'max', 'yandex_postbox'].includes(newProviderType) && (
             <div className="p-4 bg-muted/50 rounded-lg border border-border">
               <div className="flex items-start gap-3">
                 <Icon name="AlertCircle" size={20} className="text-yellow-500 mt-0.5" />
@@ -191,6 +272,9 @@ const AddProviderDialog = ({
               setNewProviderType('');
               setNewProviderWappiToken('');
               setNewProviderWappiProfileId('');
+              setNewProviderPostboxAccessKey('');
+              setNewProviderPostboxSecretKey('');
+              setNewProviderPostboxFromEmail('');
             }}
             disabled={isSaving}
           >
@@ -203,8 +287,13 @@ const AddProviderDialog = ({
               }
               
               const isWappiProvider = ['whatsapp_business', 'telegram_bot', 'max'].includes(newProviderType);
+              const isPostboxProvider = newProviderType === 'yandex_postbox';
               
               if (isWappiProvider && (!newProviderWappiToken || !newProviderWappiProfileId)) {
+                return;
+              }
+              
+              if (isPostboxProvider && (!newProviderPostboxAccessKey || !newProviderPostboxSecretKey || !newProviderPostboxFromEmail)) {
                 return;
               }
 
@@ -215,6 +304,12 @@ const AddProviderDialog = ({
                 if (isWappiProvider) {
                   config.wappi_token = newProviderWappiToken;
                   config.wappi_profile_id = newProviderWappiProfileId;
+                }
+                
+                if (isPostboxProvider) {
+                  config.postbox_access_key = newProviderPostboxAccessKey;
+                  config.postbox_secret_key = newProviderPostboxSecretKey;
+                  config.postbox_from_email = newProviderPostboxFromEmail;
                 }
 
                 const response = await fetch('https://functions.poehali.dev/c55cf921-d1ec-4fc7-a6e2-59c730988a1e', {
@@ -240,6 +335,9 @@ const AddProviderDialog = ({
                   setNewProviderType('');
                   setNewProviderWappiToken('');
                   setNewProviderWappiProfileId('');
+                  setNewProviderPostboxAccessKey('');
+                  setNewProviderPostboxSecretKey('');
+                  setNewProviderPostboxFromEmail('');
                   await loadProviders();
                 }
               } catch (error) {
@@ -253,6 +351,7 @@ const AddProviderDialog = ({
               !newProviderCode || 
               !newProviderType || 
               (['whatsapp_business', 'telegram_bot', 'max'].includes(newProviderType) && (!newProviderWappiToken || !newProviderWappiProfileId)) ||
+              (newProviderType === 'yandex_postbox' && (!newProviderPostboxAccessKey || !newProviderPostboxSecretKey || !newProviderPostboxFromEmail)) ||
               isSaving
             }
           >

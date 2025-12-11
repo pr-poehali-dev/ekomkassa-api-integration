@@ -32,6 +32,12 @@ interface IntegrationsSectionProps {
   setNewProviderWappiToken: (token: string) => void;
   newProviderWappiProfileId: string;
   setNewProviderWappiProfileId: (id: string) => void;
+  newProviderPostboxAccessKey: string;
+  setNewProviderPostboxAccessKey: (key: string) => void;
+  newProviderPostboxSecretKey: string;
+  setNewProviderPostboxSecretKey: (key: string) => void;
+  newProviderPostboxFromEmail: string;
+  setNewProviderPostboxFromEmail: (email: string) => void;
   deleteDialogOpen: boolean;
   setDeleteDialogOpen: (open: boolean) => void;
   providerToDelete: any;
@@ -70,6 +76,12 @@ const IntegrationsSection = ({
   setNewProviderWappiToken,
   newProviderWappiProfileId,
   setNewProviderWappiProfileId,
+  newProviderPostboxAccessKey,
+  setNewProviderPostboxAccessKey,
+  newProviderPostboxSecretKey,
+  setNewProviderPostboxSecretKey,
+  newProviderPostboxFromEmail,
+  setNewProviderPostboxFromEmail,
   deleteDialogOpen,
   setDeleteDialogOpen,
   providerToDelete,
@@ -137,6 +149,12 @@ const IntegrationsSection = ({
         setNewProviderWappiToken={setNewProviderWappiToken}
         newProviderWappiProfileId={newProviderWappiProfileId}
         setNewProviderWappiProfileId={setNewProviderWappiProfileId}
+        newProviderPostboxAccessKey={newProviderPostboxAccessKey}
+        setNewProviderPostboxAccessKey={setNewProviderPostboxAccessKey}
+        newProviderPostboxSecretKey={newProviderPostboxSecretKey}
+        setNewProviderPostboxSecretKey={setNewProviderPostboxSecretKey}
+        newProviderPostboxFromEmail={newProviderPostboxFromEmail}
+        setNewProviderPostboxFromEmail={setNewProviderPostboxFromEmail}
         isSaving={isSaving}
         setIsSaving={setIsSaving}
         loadProviders={loadProviders}

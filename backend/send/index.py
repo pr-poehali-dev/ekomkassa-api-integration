@@ -179,6 +179,83 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
     except requests.exceptions.RequestException as e:
         return 500, json.dumps({"error": str(e)})
 
+def get_postbox_credentials(provider: str, conn) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Получает Yandex Postbox credentials из конфига"""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT config FROM providers WHERE provider_code = %s",
+        (provider,)
+    )
+    result = cur.fetchone()
+    cur.close()
+    
+    if not result or not result['config']:
+        return None, None, None
+    
+    config = result['config']
+    return config.get('postbox_access_key'), config.get('postbox_secret_key'), config.get('postbox_from_email')
+
+def send_via_postbox(recipient: str, message: str, subject: str, provider: str, conn) -> Tuple[int, str]:
+    """Отправляет email через Yandex Postbox API (AWS SES compatible)"""
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+        
+        access_key, secret_key, from_email = get_postbox_credentials(provider, conn)
+        
+        if not access_key or not secret_key or not from_email:
+            return 500, json.dumps({"error": "Postbox credentials not configured"})
+        
+        print(f"[POSTBOX] Sending email:")
+        print(f"[POSTBOX] From: {from_email}")
+        print(f"[POSTBOX] To: {recipient}")
+        print(f"[POSTBOX] Subject: {subject}")
+        
+        client = boto3.client(
+            'sesv2',
+            region_name='ru-central1',
+            endpoint_url='https://postbox.cloud.yandex.net',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key
+        )
+        
+        response = client.send_email(
+            FromEmailAddress=from_email,
+            Destination={
+                'ToAddresses': [recipient]
+            },
+            Content={
+                'Simple': {
+                    'Subject': {
+                        'Data': subject,
+                        'Charset': 'UTF-8'
+                    },
+                    'Body': {
+                        'Text': {
+                            'Data': message,
+                            'Charset': 'UTF-8'
+                        }
+                    }
+                }
+            }
+        )
+        
+        message_id = response.get('MessageId', '')
+        print(f"[POSTBOX] Success! MessageId: {message_id}")
+        
+        return 200, json.dumps({
+            "status": "sent",
+            "message_id": message_id
+        })
+        
+    except ClientError as e:
+        error_msg = e.response['Error']['Message']
+        print(f"[POSTBOX] Error: {error_msg}")
+        return 500, json.dumps({"error": error_msg})
+    except Exception as e:
+        print(f"[POSTBOX] Exception: {str(e)}")
+        return 500, json.dumps({"error": str(e)})
+
 def simulate_provider_send(provider: str, recipient: str, message: str) -> Tuple[int, str]:
     """Симулирует отправку через провайдера (заглушка для не интегрированных провайдеров)"""
     time.sleep(0.1)
@@ -206,6 +283,9 @@ def attempt_delivery(message_id: str, provider: str, recipient: str,
         
         if provider_type in ['whatsapp_business', 'telegram_bot', 'wappi', 'max']:
             status_code, response_body = send_via_wappi(recipient, message_text, provider, conn)
+        elif provider_type == 'yandex_postbox':
+            subject = "Уведомление"
+            status_code, response_body = send_via_postbox(recipient, message_text, subject, provider, conn)
         else:
             status_code, response_body = simulate_provider_send(provider, recipient, message_text)
         

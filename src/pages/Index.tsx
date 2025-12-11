@@ -23,6 +23,9 @@ const Index = () => {
   const [newProviderType, setNewProviderType] = useState('');
   const [newProviderWappiToken, setNewProviderWappiToken] = useState('');
   const [newProviderWappiProfileId, setNewProviderWappiProfileId] = useState('');
+  const [newProviderPostboxAccessKey, setNewProviderPostboxAccessKey] = useState('');
+  const [newProviderPostboxSecretKey, setNewProviderPostboxSecretKey] = useState('');
+  const [newProviderPostboxFromEmail, setNewProviderPostboxFromEmail] = useState('');
   
   const [providers, setProviders] = useState<any[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
@@ -54,6 +57,7 @@ const Index = () => {
   const [providerConfigs, setProviderConfigs] = useState<Record<string, boolean>>({});
 
   const getProviderIcon = (providerType: string, providerCode: string) => {
+    if (providerType === 'yandex_postbox') return 'Mail';
     if (providerCode.includes('whatsapp')) return 'Phone';
     if (providerCode.includes('telegram')) return 'Send';
     if (providerCode.includes('sms')) return 'MessageSquare';
@@ -150,6 +154,7 @@ const Index = () => {
           }
           
           const usesWappi = ['whatsapp_business', 'telegram_bot', 'max', 'wappi'].includes(p.provider_type);
+          const usesPostbox = p.provider_type === 'yandex_postbox';
           
           return {
             id: index + 1,
@@ -159,6 +164,7 @@ const Index = () => {
             requests: 0,
             code: p.provider_code,
             usesWappi: usesWappi,
+            usesPostbox: usesPostbox,
             lastAttemptAt: p.last_attempt_at
           };
         });
@@ -374,6 +380,12 @@ const Index = () => {
                   setNewProviderWappiToken={setNewProviderWappiToken}
                   newProviderWappiProfileId={newProviderWappiProfileId}
                   setNewProviderWappiProfileId={setNewProviderWappiProfileId}
+                  newProviderPostboxAccessKey={newProviderPostboxAccessKey}
+                  setNewProviderPostboxAccessKey={setNewProviderPostboxAccessKey}
+                  newProviderPostboxSecretKey={newProviderPostboxSecretKey}
+                  setNewProviderPostboxSecretKey={setNewProviderPostboxSecretKey}
+                  newProviderPostboxFromEmail={newProviderPostboxFromEmail}
+                  setNewProviderPostboxFromEmail={setNewProviderPostboxFromEmail}
                   deleteDialogOpen={deleteDialogOpen}
                   setDeleteDialogOpen={setDeleteDialogOpen}
                   providerToDelete={providerToDelete}

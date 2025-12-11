@@ -96,6 +96,14 @@ const ProviderCard = ({
           </div>
         </div>
       )}
+      {provider.usesPostbox && (
+        <div className="mb-3 px-3 py-2 bg-blue-500/10 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Icon name="Mail" size={14} className="text-blue-500" />
+            <span className="text-xs font-medium text-blue-500">Яндекс Postbox API</span>
+          </div>
+        </div>
+      )}
       {provider.lastAttemptAt && (
         <div className="mb-3">
           <p className="text-xs text-muted-foreground">
