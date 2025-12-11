@@ -16,15 +16,39 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [recipient, setRecipient] = useState('');
   const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [response, setResponse] = useState<any>(null);
 
-  const activeProviders = providers.filter(p => p.status === 'working' || p.status === 'configured');
+  const activeProviders = [
+    ...providers.filter(p => p.status === 'working' || p.status === 'configured'),
+    {
+      id: 999,
+      name: 'Email Test (Postbox)',
+      icon: 'Mail',
+      status: 'working',
+      code: 'ek_email',
+      usesPostbox: true
+    }
+  ];
+
+  const selectedProviderData = activeProviders.find(p => p.code === selectedProvider);
+  const isEmailProvider = selectedProviderData?.usesPostbox;
 
   const loadExample = () => {
-    setSelectedProvider('max');
-    setRecipient('+79689363395');
-    setMessage('тест макса из песочницы');
+    const hasEmailProvider = activeProviders.some(p => p.usesPostbox);
+    
+    if (hasEmailProvider) {
+      setSelectedProvider('ek_email');
+      setRecipient('test@example.com');
+      setMessage('Это тестовое письмо из песочницы Ekomkassa Integration Hub.');
+      setSubject('Тестовое письмо');
+    } else {
+      setSelectedProvider('max');
+      setRecipient('+79689363395');
+      setMessage('тест макса из песочницы');
+      setSubject('');
+    }
   };
 
   const sendMessage = async () => {
@@ -36,17 +60,23 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
     setResponse(null);
 
     try {
+      const requestBody: any = {
+        provider: selectedProvider,
+        recipient: recipient,
+        message: message
+      };
+
+      if (isEmailProvider && subject) {
+        requestBody.subject = subject;
+      }
+
       const response = await fetch('https://functions.poehali.dev/ace36e55-b169-41f2-9d2b-546f92221bb7', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
         },
-        body: JSON.stringify({
-          provider: selectedProvider,
-          recipient: recipient,
-          message: message
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -56,6 +86,7 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
         setTimeout(() => {
           setRecipient('');
           setMessage('');
+          setSubject('');
         }, 2000);
       }
     } catch (error) {
@@ -122,6 +153,9 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
                         {provider.usesWappi && (
                           <Badge variant="outline" className="ml-2 text-xs">Wappi</Badge>
                         )}
+                        {provider.usesPostbox && (
+                          <Badge variant="outline" className="ml-2 text-xs bg-blue-500/10 text-blue-500 border-blue-500/20">Postbox</Badge>
+                        )}
                       </div>
                     </SelectItem>
                   ))}
@@ -136,28 +170,43 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
               <Label htmlFor="recipient">Получатель</Label>
               <Input
                 id="recipient"
-                placeholder="+79991234567"
+                placeholder={isEmailProvider ? "email@example.com" : "+79991234567"}
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
                 className="font-mono"
               />
               <p className="text-xs text-muted-foreground">
-                Номер телефона или идентификатор получателя
+                {isEmailProvider ? "Email адрес получателя" : "Номер телефона или идентификатор получателя"}
               </p>
             </div>
+
+            {isEmailProvider && (
+              <div className="space-y-2">
+                <Label htmlFor="subject">Тема письма</Label>
+                <Input
+                  id="subject"
+                  placeholder="Тема письма"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Тема email сообщения (опционально)
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="message">Сообщение</Label>
               <Textarea
                 id="message"
-                placeholder="Введите текст сообщения..."
+                placeholder={isEmailProvider ? "Текст email сообщения..." : "Введите текст сообщения..."}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={5}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground">
-                Текст сообщения для отправки
+                {isEmailProvider ? "Текст email сообщения" : "Текст сообщения для отправки"}
               </p>
             </div>
 
@@ -219,8 +268,18 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
                   <p className="font-medium mb-1">Информация:</p>
                   <ul className="text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Сообщения отправляются в реальном времени</li>
-                    <li>Для WhatsApp используйте формат: +79991234567</li>
-                    <li>Система автоматически повторяет неудачные попытки</li>
+                    {isEmailProvider ? (
+                      <>
+                        <li>Для Email укажите корректный email адрес</li>
+                        <li>Тема письма опциональна (по умолчанию: "Уведомление")</li>
+                        <li>Провайдер ek_email использует Yandex Postbox API</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Для WhatsApp используйте формат: +79991234567</li>
+                        <li>Система автоматически повторяет неудачные попытки</li>
+                      </>
+                    )}
                     <li>Результаты отправки можно посмотреть в разделе "Логи"</li>
                   </ul>
                 </div>
