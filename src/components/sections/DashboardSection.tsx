@@ -75,8 +75,8 @@ const DashboardSection = ({
               Последние логи
             </h3>
             <div className="space-y-3">
-              {logs.slice(0, 5).map((log) => (
-                <div key={log.id} className="p-3 bg-background/50 rounded-lg border border-border">
+              {logs.slice(0, 5).map((log, index) => (
+                <div key={log.message_id || `log-${index}`} className="p-3 bg-background/50 rounded-lg border border-border">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-mono text-muted-foreground">{log.time}</span>
                     <Badge variant={log.status === 200 ? 'default' : 'destructive'} className="text-xs">
