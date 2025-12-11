@@ -132,13 +132,12 @@ def send_via_wappi(recipient: str, message: str, provider: str, conn) -> Tuple[i
             'https://wappi.pro/api/sync/message/send',
             params={'profile_id': wappi_profile_id},
             headers={
-                'Authorization': wappi_token,
-                'Content-Type': 'application/json'
+                'Authorization': wappi_token
             },
-            json={
+            data=json.dumps({
                 'recipient': recipient_clean,
                 'body': message
-            },
+            }),
             timeout=10
         )
         
