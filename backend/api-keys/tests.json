@@ -1,0 +1,78 @@
+{
+  "tests": [
+    {
+      "name": "Create new API key",
+      "method": "POST",
+      "headers": {
+        "X-Api-Key": "ek_live_j8h3k2n4m5p6q7r8"
+      },
+      "body": {
+        "key_name": "Test Key",
+        "expiry_days": "never"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true,
+        "key_name": "Test Key"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create key with expiry",
+      "method": "POST",
+      "headers": {
+        "X-Api-Key": "ek_live_j8h3k2n4m5p6q7r8"
+      },
+      "body": {
+        "key_name": "Expiring Key",
+        "expiry_days": "30"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true,
+        "key_name": "Expiring Key"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing key_name",
+      "method": "POST",
+      "headers": {
+        "X-Api-Key": "ek_live_j8h3k2n4m5p6q7r8"
+      },
+      "body": {
+        "expiry_days": "never"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "Missing key_name"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unauthorized access",
+      "method": "POST",
+      "headers": {},
+      "body": {
+        "key_name": "Test"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Missing API key"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all API keys",
+      "method": "GET",
+      "headers": {
+        "X-Api-Key": "ek_live_j8h3k2n4m5p6q7r8"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

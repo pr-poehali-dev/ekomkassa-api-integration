@@ -43,6 +43,25 @@ const Index = () => {
   const [keyToDelete, setKeyToDelete] = useState<any>(null);
   const [isDeletingKey, setIsDeletingKey] = useState(false);
 
+  const loadApiKeys = async () => {
+    setIsLoadingKeys(true);
+    try {
+      const response = await fetch('https://functions.poehali.dev/968d5f56-3d5a-4427-90b9-c040acd085d6', {
+        headers: {
+          'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setApiKeys(data.keys || []);
+      }
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+    } finally {
+      setIsLoadingKeys(false);
+    }
+  };
+
   const getProviderIcon = (providerType: string, providerCode: string) => {
     if (providerCode.includes('whatsapp')) return 'Phone';
     if (providerCode.includes('telegram')) return 'Send';
@@ -53,10 +72,12 @@ const Index = () => {
     return 'Plug';
   };
 
-  const apiKeys = [
-    { id: 1, name: 'Ekomkassa Production', key: 'ek_live_j8h3k2n4m5p6q7r8', created: '2024-12-10', lastUsed: '1 час назад' },
-    { id: 2, name: 'Ekomkassa Staging', key: 'ek_test_a1b2c3d4e5f6g7h8', created: '2024-12-05', lastUsed: '3 дня назад' },
-  ];
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+  const [regenerateKeyDialogOpen, setRegenerateKeyDialogOpen] = useState(false);
+  const [keyToRegenerate, setKeyToRegenerate] = useState<any>(null);
+  const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
+  const [regeneratedKey, setRegeneratedKey] = useState<string | null>(null);
 
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -159,10 +180,14 @@ const Index = () => {
     if (activeSection === 'integrations') {
       loadProviders();
     }
+    if (activeSection === 'keys') {
+      loadApiKeys();
+    }
   }, [activeSection]);
 
   useEffect(() => {
     loadProviders();
+    loadApiKeys();
   }, []);
 
   const deleteProvider = async () => {
@@ -522,20 +547,45 @@ const Index = () => {
 
               {activeSection === 'keys' && (
                 <div className="space-y-6">
-                  <Card className="p-6 bg-card/50 backdrop-blur-sm border-border">
-                    <h3 className="text-lg font-semibold mb-4">Активные API ключи</h3>
-                    <div className="space-y-4">
-                      {apiKeys.map((key) => (
-                        <div key={key.id} className="p-4 bg-background/50 rounded-lg border border-border">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h4 className="font-semibold">{key.name}</h4>
-                                <Badge variant="outline">Активен</Badge>
+                  {isLoadingKeys ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Icon name="Loader2" size={32} className="animate-spin text-primary" />
+                    </div>
+                  ) : apiKeys.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Icon name="Key" size={48} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
+                      <p className="text-muted-foreground mb-4">API ключи не найдены</p>
+                      <Button onClick={() => setCreateKeyDialogOpen(true)}>
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Создать первый ключ
+                      </Button>
+                    </div>
+                  ) : (
+                    <Card className="p-6 bg-card/50 backdrop-blur-sm border-border">
+                      <h3 className="text-lg font-semibold mb-4">Активные API ключи</h3>
+                      <div className="space-y-4">
+                        {apiKeys.map((key) => (
+                          <div key={key.id} className="p-4 bg-background/50 rounded-lg border border-border">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h4 className="font-semibold">{key.key_name}</h4>
+                                  <Badge variant="outline">{key.is_active ? 'Активен' : 'Неактивен'}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Создан: {new Date(key.created_at).toLocaleDateString('ru-RU')}
+                                </p>
+                                {key.last_used_at && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Последнее использование: {new Date(key.last_used_at).toLocaleString('ru-RU')}
+                                  </p>
+                                )}
+                                {key.expiry_date && (
+                                  <p className="text-xs text-yellow-500 mt-1">
+                                    Истекает: {new Date(key.expiry_date).toLocaleDateString('ru-RU')}
+                                  </p>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground">Создан: {key.created}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Последнее использование: {key.lastUsed}</p>
-                            </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm">
@@ -544,13 +594,14 @@ const Index = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => {
-                                  navigator.clipboard.writeText(key.key);
+                                  navigator.clipboard.writeText(key.api_key);
                                 }}>
                                   <Icon name="Copy" size={14} className="mr-2" />
                                   Копировать ключ
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
-                                  // TODO: Implement regenerate
+                                  setKeyToRegenerate(key);
+                                  setRegenerateKeyDialogOpen(true);
                                 }}>
                                   <Icon name="RefreshCw" size={14} className="mr-2" />
                                   Перевыпустить
@@ -570,21 +621,22 @@ const Index = () => {
                             </DropdownMenu>
                           </div>
                           <div className="flex items-center gap-2 bg-background p-3 rounded-lg border border-border">
-                            <code className="text-sm font-mono flex-1 select-all">{key.key}</code>
+                            <code className="text-sm font-mono flex-1 select-all">{key.api_key}</code>
                             <Button 
                               size="sm" 
                               variant="ghost"
                               onClick={() => {
-                                navigator.clipboard.writeText(key.key);
+                                navigator.clipboard.writeText(key.api_key);
                               }}
                             >
                               <Icon name="Copy" size={16} />
                             </Button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
                 </div>
               )}
 
@@ -1253,13 +1305,30 @@ const Index = () => {
                   Отмена
                 </Button>
                 <Button 
-                  onClick={() => {
-                    // TODO: Implement API key creation
+                  onClick={async () => {
                     setIsCreatingKey(true);
-                    setTimeout(() => {
-                      setCreatedKey('ek_live_' + Math.random().toString(36).substring(2, 18));
+                    try {
+                      const response = await fetch('https://functions.poehali.dev/968d5f56-3d5a-4427-90b9-c040acd085d6', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
+                        },
+                        body: JSON.stringify({
+                          key_name: newKeyName,
+                          expiry_days: newKeyExpiry
+                        })
+                      });
+                      const data = await response.json();
+                      if (data.success) {
+                        setCreatedKey(data.api_key);
+                        await loadApiKeys();
+                      }
+                    } catch (error) {
+                      console.error('Failed to create key:', error);
+                    } finally {
                       setIsCreatingKey(false);
-                    }, 1000);
+                    }
                   }}
                   disabled={!newKeyName || isCreatingKey}
                 >
@@ -1304,15 +1373,29 @@ const Index = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingKey}>Отмена</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
-                // TODO: Implement key deletion
+                if (!keyToDelete) return;
+                
                 setIsDeletingKey(true);
-                setTimeout(() => {
-                  setDeleteKeyDialogOpen(false);
-                  setKeyToDelete(null);
+                try {
+                  const response = await fetch(`https://functions.poehali.dev/968d5f56-3d5a-4427-90b9-c040acd085d6?key_id=${keyToDelete.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                      'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
+                    }
+                  });
+                  const data = await response.json();
+                  if (data.success) {
+                    setDeleteKeyDialogOpen(false);
+                    setKeyToDelete(null);
+                    await loadApiKeys();
+                  }
+                } catch (error) {
+                  console.error('Failed to delete key:', error);
+                } finally {
                   setIsDeletingKey(false);
-                }, 1000);
+                }
               }}
               disabled={isDeletingKey}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1329,6 +1412,121 @@ const Index = () => {
                 </>
               )}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={regenerateKeyDialogOpen} onOpenChange={setRegenerateKeyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Icon name="RefreshCw" size={20} className="text-primary" />
+              </div>
+              <span>Перевыпустить API ключ?</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {keyToRegenerate && (
+                <>
+                  {regeneratedKey ? (
+                    <div className="space-y-3 mt-3">
+                      <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <div className="flex items-start gap-3">
+                          <Icon name="CheckCircle" size={20} className="text-green-500 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-medium text-green-500 mb-2">Ключ успешно перевыпущен!</p>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              Скопируйте новый ключ сейчас. Старый ключ больше не работает.
+                            </p>
+                            <div className="flex items-center gap-2 bg-background p-3 rounded-lg border border-border">
+                              <code className="text-sm font-mono flex-1 select-all break-all">{regeneratedKey}</code>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(regeneratedKey);
+                                }}
+                              >
+                                <Icon name="Copy" size={16} />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      Вы действительно хотите перевыпустить API ключ <strong>{keyToRegenerate.key_name}</strong>?
+                      <br />
+                      <br />
+                      Будет создан новый ключ, а текущий перестанет работать. Все приложения, использующие старый ключ, потеряют доступ к API.
+                    </>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {regeneratedKey ? (
+              <Button 
+                onClick={() => {
+                  setRegenerateKeyDialogOpen(false);
+                  setKeyToRegenerate(null);
+                  setRegeneratedKey(null);
+                }}
+                className="w-full"
+              >
+                Закрыть
+              </Button>
+            ) : (
+              <>
+                <AlertDialogCancel disabled={isRegeneratingKey}>Отмена</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!keyToRegenerate) return;
+                    
+                    setIsRegeneratingKey(true);
+                    try {
+                      const response = await fetch('https://functions.poehali.dev/968d5f56-3d5a-4427-90b9-c040acd085d6', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
+                        },
+                        body: JSON.stringify({
+                          action: 'regenerate',
+                          key_id: keyToRegenerate.id
+                        })
+                      });
+                      const data = await response.json();
+                      if (data.success) {
+                        setRegeneratedKey(data.api_key);
+                        await loadApiKeys();
+                      }
+                    } catch (error) {
+                      console.error('Failed to regenerate key:', error);
+                    } finally {
+                      setIsRegeneratingKey(false);
+                    }
+                  }}
+                  disabled={isRegeneratingKey}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isRegeneratingKey ? (
+                    <>
+                      <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                      Перевыпуск...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="RefreshCw" size={16} className="mr-2" />
+                      Перевыпустить ключ
+                    </>
+                  )}
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
