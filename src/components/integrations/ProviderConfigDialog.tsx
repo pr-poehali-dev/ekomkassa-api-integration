@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 
 interface ProviderConfigDialogProps {
   configDialogOpen: boolean;
@@ -34,6 +35,13 @@ const ProviderConfigDialog = ({
   isSaving,
   saveProviderConfig
 }: ProviderConfigDialogProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const copyProviderCode = () => {
+    navigator.clipboard.writeText(editProviderCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
     <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
       <DialogContent className="sm:max-w-[500px]">
@@ -84,13 +92,23 @@ const ProviderConfigDialog = ({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-provider-code">Код провайдера (provider_code)</Label>
-              <Input
-                id="edit-provider-code"
-                value={editProviderCode}
-                onChange={(e) => setEditProviderCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                className="font-mono text-sm"
-                disabled
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="edit-provider-code"
+                  value={editProviderCode}
+                  onChange={(e) => setEditProviderCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  className="font-mono text-sm flex-1"
+                  disabled
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyProviderCode}
+                  className="px-3"
+                >
+                  <Icon name={copied ? "Check" : "Copy"} size={16} className={copied ? "text-green-500" : ""} />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Используйте этот код в поле "provider" при отправке сообщений через API
               </p>
