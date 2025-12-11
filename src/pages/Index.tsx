@@ -5,6 +5,7 @@ import IntegrationsSection from '@/components/sections/IntegrationsSection';
 import ApiKeysSection from '@/components/sections/ApiKeysSection';
 import LogsSection from '@/components/sections/LogsSection';
 import DashboardSection from '@/components/sections/DashboardSection';
+import SandboxSection from '@/components/sections/SandboxSection';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -271,6 +272,7 @@ const Index = () => {
               { id: 'dashboard', label: 'Дашборд', icon: 'LayoutDashboard' },
               { id: 'integrations', label: 'Интеграции', icon: 'Plug' },
               { id: 'keys', label: 'API Ключи', icon: 'Key' },
+              { id: 'sandbox', label: 'Песочница', icon: 'Send' },
               { id: 'logs', label: 'Логи', icon: 'FileText' },
               { id: 'settings', label: 'Настройки', icon: 'Settings' },
               { id: 'docs', label: 'Документация', icon: 'BookOpen' },
@@ -299,6 +301,7 @@ const Index = () => {
                   {activeSection === 'dashboard' && 'Дашборд'}
                   {activeSection === 'integrations' && 'Интеграции'}
                   {activeSection === 'keys' && 'API Ключи'}
+                  {activeSection === 'sandbox' && 'Песочница'}
                   {activeSection === 'logs' && 'Логи запросов'}
                   {activeSection === 'settings' && 'Настройки'}
                   {activeSection === 'docs' && 'Документация API'}
@@ -307,6 +310,7 @@ const Index = () => {
                   {activeSection === 'dashboard' && 'Общая статистика и мониторинг системы'}
                   {activeSection === 'integrations' && 'Подключения к каналам коммуникации'}
                   {activeSection === 'keys' && 'Управление доступом к API'}
+                  {activeSection === 'sandbox' && 'Тестирование отправки сообщений'}
                   {activeSection === 'logs' && 'История запросов и событий'}
                   {activeSection === 'settings' && 'Конфигурация системы'}
                   {activeSection === 'docs' && 'API справка и примеры интеграции'}
@@ -402,6 +406,12 @@ const Index = () => {
                   isDeletingKey={isDeletingKey}
                   setIsDeletingKey={setIsDeletingKey}
                   loadApiKeys={loadApiKeys}
+                />
+              )}
+
+              {activeSection === 'sandbox' && (
+                <SandboxSection
+                  providers={providers}
                 />
               )}
 
