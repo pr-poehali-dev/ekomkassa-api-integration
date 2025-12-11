@@ -5,16 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [wappiToken, setWappiToken] = useState('');
+  const [wappiProfileId, setWappiProfileId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const providers = [
-    { id: 1, name: 'SMS Gateway', icon: 'MessageSquare', status: 'active', requests: 1247 },
-    { id: 2, name: 'WhatsApp Business', icon: 'Phone', status: 'active', requests: 892 },
-    { id: 3, name: 'Telegram Bot', icon: 'Send', status: 'active', requests: 2156 },
-    { id: 4, name: 'Push Notifications', icon: 'Bell', status: 'inactive', requests: 0 },
-    { id: 5, name: 'Email Service', icon: 'Mail', status: 'active', requests: 634 },
+    { id: 1, name: 'SMS Gateway', icon: 'MessageSquare', status: 'active', requests: 1247, code: 'sms_gateway', usesWappi: false },
+    { id: 2, name: 'WhatsApp Business', icon: 'Phone', status: 'active', requests: 892, code: 'whatsapp_business', usesWappi: true },
+    { id: 3, name: 'Telegram Bot', icon: 'Send', status: 'active', requests: 2156, code: 'telegram_bot', usesWappi: true },
+    { id: 4, name: 'Push Notifications', icon: 'Bell', status: 'inactive', requests: 0, code: 'push_service', usesWappi: false },
+    { id: 5, name: 'Email Service', icon: 'Mail', status: 'active', requests: 634, code: 'email_service', usesWappi: false },
+    { id: 6, name: 'MAX Messenger', icon: 'MessageCircle', status: 'inactive', requests: 0, code: 'wappi', usesWappi: true },
   ];
 
   const apiKeys = [
@@ -72,6 +80,26 @@ const Index = () => {
       loadLogs();
     }
   }, [activeSection]);
+
+  const openProviderConfig = (provider: any) => {
+    setSelectedProvider(provider);
+    setWappiToken('');
+    setWappiProfileId('');
+    setConfigDialogOpen(true);
+  };
+
+  const saveProviderConfig = async () => {
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Saved config:', { provider: selectedProvider.code, token: wappiToken, profileId: wappiProfileId });
+      setConfigDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save config:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const stats = [
     { label: 'Всего запросов', value: '4,929', change: '+12.5%', icon: 'TrendingUp', color: 'text-primary' },
@@ -236,8 +264,21 @@ const Index = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         {provider.requests.toLocaleString()} запросов за сегодня
                       </p>
+                      {provider.usesWappi && (
+                        <div className="mb-3 px-3 py-2 bg-primary/10 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Zap" size={14} className="text-primary" />
+                            <span className="text-xs font-medium text-primary">Работает через Wappi</span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => openProviderConfig(provider)}
+                        >
                           <Icon name="Settings" size={16} className="mr-2" />
                           Настроить
                         </Button>
@@ -454,6 +495,122 @@ const Index = () => {
           </div>
         </main>
       </div>
+
+      <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedProvider && (
+                <>
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon name={selectedProvider.icon} size={20} className="text-primary" />
+                  </div>
+                  <span>Настройка {selectedProvider.name}</span>
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedProvider?.usesWappi ? (
+                <>
+                  Для работы {selectedProvider.name} требуется настроить интеграцию с Wappi.
+                  <br />
+                  <a 
+                    href="https://wappi.pro" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1 mt-2"
+                  >
+                    Получить ключи в личном кабинете Wappi
+                    <Icon name="ExternalLink" size={14} />
+                  </a>
+                </>
+              ) : (
+                `Настройте параметры подключения для ${selectedProvider?.name}`
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProvider?.usesWappi ? (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="wappi-token">API Token</Label>
+                <Input
+                  id="wappi-token"
+                  placeholder="Введите токен Wappi"
+                  value={wappiToken}
+                  onChange={(e) => setWappiToken(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Токен авторизации из личного кабинета wappi.pro
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="wappi-profile">Profile ID</Label>
+                <Input
+                  id="wappi-profile"
+                  placeholder="Введите ID профиля"
+                  value={wappiProfileId}
+                  onChange={(e) => setWappiProfileId(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Идентификатор профиля для работы с API
+                </p>
+              </div>
+
+              <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-start gap-3">
+                  <Icon name="Info" size={20} className="text-primary mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium mb-1">Как получить данные:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                      <li>Зайдите на wappi.pro</li>
+                      <li>Откройте раздел "Настройки API"</li>
+                      <li>Скопируйте Token и Profile ID</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-4">
+              <p className="text-sm text-muted-foreground">
+                Настройки для этого провайдера будут доступны позже.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setConfigDialogOpen(false)}
+              disabled={isSaving}
+            >
+              Отмена
+            </Button>
+            {selectedProvider?.usesWappi && (
+              <Button 
+                onClick={saveProviderConfig}
+                disabled={!wappiToken || !wappiProfileId || isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Check" size={16} className="mr-2" />
+                    Сохранить
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
