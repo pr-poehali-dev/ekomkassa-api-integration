@@ -17,6 +17,12 @@ interface ProviderConfigDialogProps {
   setWappiToken: (token: string) => void;
   wappiProfileId: string;
   setWappiProfileId: (id: string) => void;
+  postboxAccessKey: string;
+  setPostboxAccessKey: (key: string) => void;
+  postboxSecretKey: string;
+  setPostboxSecretKey: (key: string) => void;
+  postboxFromEmail: string;
+  setPostboxFromEmail: (email: string) => void;
   isSaving: boolean;
   saveProviderConfig: () => void;
 }
@@ -32,6 +38,12 @@ const ProviderConfigDialog = ({
   setWappiToken,
   wappiProfileId,
   setWappiProfileId,
+  postboxAccessKey,
+  setPostboxAccessKey,
+  postboxSecretKey,
+  setPostboxSecretKey,
+  postboxFromEmail,
+  setPostboxFromEmail,
   isSaving,
   saveProviderConfig
 }: ProviderConfigDialogProps) => {
@@ -156,6 +168,90 @@ const ProviderConfigDialog = ({
               </div>
             </div>
           </div>
+        ) : selectedProvider?.usesPostbox ? (
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-provider-code">Код провайдера (provider_code)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-provider-code"
+                  value={editProviderCode}
+                  className="font-mono text-sm flex-1"
+                  disabled
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyProviderCode}
+                  className="px-3"
+                >
+                  <Icon name={copied ? "Check" : "Copy"} size={16} className={copied ? "text-green-500" : ""} />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Используйте этот код в поле "provider" при отправке сообщений через API
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="postbox-access-key">Access Key ID</Label>
+              <Input
+                id="postbox-access-key"
+                placeholder="Введите Access Key ID"
+                value={postboxAccessKey}
+                onChange={(e) => setPostboxAccessKey(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ключ доступа из Yandex Cloud Postbox
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="postbox-secret-key">Secret Access Key</Label>
+              <Input
+                id="postbox-secret-key"
+                type="password"
+                placeholder="Введите Secret Access Key"
+                value={postboxSecretKey}
+                onChange={(e) => setPostboxSecretKey(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Секретный ключ для доступа к API
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="postbox-from-email">Адрес отправителя</Label>
+              <Input
+                id="postbox-from-email"
+                type="email"
+                placeholder="noreply@example.com"
+                value={postboxFromEmail}
+                onChange={(e) => setPostboxFromEmail(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Верифицированный адрес отправителя в Postbox
+              </p>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg border border-border">
+              <div className="flex items-start gap-3">
+                <Icon name="Info" size={20} className="text-primary mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium mb-1">Как получить данные:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Откройте Yandex Cloud Console</li>
+                    <li>Перейдите в Postbox → Настройки</li>
+                    <li>Создайте Access Key</li>
+                    <li>Верифицируйте адрес отправителя</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
@@ -172,10 +268,14 @@ const ProviderConfigDialog = ({
           >
             Отмена
           </Button>
-          {selectedProvider?.usesWappi && (
+          {(selectedProvider?.usesWappi || selectedProvider?.usesPostbox) && (
             <Button 
               onClick={saveProviderConfig}
-              disabled={!wappiToken || !wappiProfileId || isSaving}
+              disabled={
+                (selectedProvider?.usesWappi && (!wappiToken || !wappiProfileId)) ||
+                (selectedProvider?.usesPostbox && (!postboxAccessKey || !postboxSecretKey || !postboxFromEmail)) ||
+                isSaving
+              }
             >
               {isSaving ? (
                 <>

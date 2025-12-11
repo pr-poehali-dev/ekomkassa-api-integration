@@ -15,6 +15,9 @@ const Index = () => {
   const [editProviderCode, setEditProviderCode] = useState('');
   const [wappiToken, setWappiToken] = useState('');
   const [wappiProfileId, setWappiProfileId] = useState('');
+  const [postboxAccessKey, setPostboxAccessKey] = useState('');
+  const [postboxSecretKey, setPostboxSecretKey] = useState('');
+  const [postboxFromEmail, setPostboxFromEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
   const [addProviderDialogOpen, setAddProviderDialogOpen] = useState(false);
@@ -226,23 +229,37 @@ const Index = () => {
     setEditProviderCode(provider.code || '');
     setWappiToken('');
     setWappiProfileId('');
+    setPostboxAccessKey('');
+    setPostboxSecretKey('');
+    setPostboxFromEmail('');
     setConfigDialogOpen(true);
   };
 
   const saveProviderConfig = async () => {
     setIsSaving(true);
     try {
+      const requestBody: any = {
+        provider_code: selectedProvider.code
+      };
+
+      if (selectedProvider.usesWappi) {
+        requestBody.wappi_token = wappiToken;
+        requestBody.wappi_profile_id = wappiProfileId;
+      }
+
+      if (selectedProvider.usesPostbox) {
+        requestBody.postbox_access_key = postboxAccessKey;
+        requestBody.postbox_secret_key = postboxSecretKey;
+        requestBody.postbox_from_email = postboxFromEmail;
+      }
+
       const response = await fetch('https://functions.poehali.dev/c55cf921-d1ec-4fc7-a6e2-59c730988a1e', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Api-Key': 'ek_live_j8h3k2n4m5p6q7r8'
         },
-        body: JSON.stringify({
-          provider_code: selectedProvider.code,
-          wappi_token: wappiToken,
-          wappi_profile_id: wappiProfileId
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -251,6 +268,9 @@ const Index = () => {
         setConfigDialogOpen(false);
         setWappiToken('');
         setWappiProfileId('');
+        setPostboxAccessKey('');
+        setPostboxSecretKey('');
+        setPostboxFromEmail('');
         await loadProviders();
       } else {
         console.error('Failed to save config:', data.error);
@@ -366,6 +386,12 @@ const Index = () => {
                   setWappiToken={setWappiToken}
                   wappiProfileId={wappiProfileId}
                   setWappiProfileId={setWappiProfileId}
+                  postboxAccessKey={postboxAccessKey}
+                  setPostboxAccessKey={setPostboxAccessKey}
+                  postboxSecretKey={postboxSecretKey}
+                  setPostboxSecretKey={setPostboxSecretKey}
+                  postboxFromEmail={postboxFromEmail}
+                  setPostboxFromEmail={setPostboxFromEmail}
                   isSaving={isSaving}
                   setIsSaving={setIsSaving}
                   addProviderDialogOpen={addProviderDialogOpen}

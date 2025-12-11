@@ -191,6 +191,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             provider_type = body_data.get('provider_type')
             wappi_token = body_data.get('wappi_token')
             wappi_profile_id = body_data.get('wappi_profile_id')
+            postbox_access_key = body_data.get('postbox_access_key')
+            postbox_secret_key = body_data.get('postbox_secret_key')
+            postbox_from_email = body_data.get('postbox_from_email')
             
             if not provider_code:
                 conn.close()
@@ -206,6 +209,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 config['wappi_token'] = wappi_token
             if wappi_profile_id:
                 config['wappi_profile_id'] = wappi_profile_id
+            if postbox_access_key:
+                config['postbox_access_key'] = postbox_access_key
+            if postbox_secret_key:
+                config['postbox_secret_key'] = postbox_secret_key
+            if postbox_from_email:
+                config['postbox_from_email'] = postbox_from_email
             
             cur = conn.cursor()
             

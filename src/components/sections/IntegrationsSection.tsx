@@ -18,6 +18,12 @@ interface IntegrationsSectionProps {
   setWappiToken: (token: string) => void;
   wappiProfileId: string;
   setWappiProfileId: (id: string) => void;
+  postboxAccessKey: string;
+  setPostboxAccessKey: (key: string) => void;
+  postboxSecretKey: string;
+  setPostboxSecretKey: (key: string) => void;
+  postboxFromEmail: string;
+  setPostboxFromEmail: (email: string) => void;
   isSaving: boolean;
   setIsSaving: (saving: boolean) => void;
   addProviderDialogOpen: boolean;
@@ -62,6 +68,12 @@ const IntegrationsSection = ({
   setWappiToken,
   wappiProfileId,
   setWappiProfileId,
+  postboxAccessKey,
+  setPostboxAccessKey,
+  postboxSecretKey,
+  setPostboxSecretKey,
+  postboxFromEmail,
+  setPostboxFromEmail,
   isSaving,
   setIsSaving,
   addProviderDialogOpen,
@@ -132,6 +144,12 @@ const IntegrationsSection = ({
         setWappiToken={setWappiToken}
         wappiProfileId={wappiProfileId}
         setWappiProfileId={setWappiProfileId}
+        postboxAccessKey={postboxAccessKey}
+        setPostboxAccessKey={setPostboxAccessKey}
+        postboxSecretKey={postboxSecretKey}
+        setPostboxSecretKey={setPostboxSecretKey}
+        postboxFromEmail={postboxFromEmail}
+        setPostboxFromEmail={setPostboxFromEmail}
         isSaving={isSaving}
         saveProviderConfig={saveProviderConfig}
       />
