@@ -203,92 +203,113 @@ def send_via_postbox(recipient: str, message: str, subject: str, provider: str, 
     - Отправка по шаблону (SendEmail с Template) - если указан template_name
     """
     try:
-        import boto3
-        from botocore.exceptions import ClientError
-        import logging
-        
-        # Включаем debug логирование boto3
-        logging.basicConfig(level=logging.DEBUG)
-        boto3.set_stream_logger('boto3.resources', logging.DEBUG)
-        boto3.set_stream_logger('botocore', logging.DEBUG)
+        import hashlib
+        import hmac
         
         access_key, secret_key, from_email = get_postbox_credentials(provider, conn)
         
         if not access_key or not secret_key or not from_email:
             return 500, json.dumps({"error": "Postbox credentials not configured"})
         
-        print(f"[POSTBOX DEBUG] =================================")
-        print(f"[POSTBOX DEBUG] AWS Credentials:")
-        print(f"[POSTBOX DEBUG] Access Key: {access_key[:8]}...{access_key[-4:]}")
-        print(f"[POSTBOX DEBUG] Secret Key: {secret_key[:8]}...{secret_key[-4:]}")
-        print(f"[POSTBOX DEBUG] Region: ru-central1")
-        print(f"[POSTBOX DEBUG] Endpoint: https://postbox.cloud.yandex.net")
-        print(f"[POSTBOX DEBUG] =================================")
+        print(f"[POSTBOX] Using Basic Auth with AWS SigV4")
+        print(f"[POSTBOX] From: {from_email}")
+        print(f"[POSTBOX] To: {recipient}")
+        print(f"[POSTBOX] Subject: {subject}")
         
-        client = boto3.client(
-            'sesv2',
-            region_name='ru-central1',
-            endpoint_url='https://postbox.cloud.yandex.net',
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key
+        # Подготовка body запроса
+        if template_name:
+            body = json.dumps({
+                "FromEmailAddress": from_email,
+                "Destination": {
+                    "ToAddresses": [recipient]
+                },
+                "Content": {
+                    "Template": {
+                        "TemplateName": template_name,
+                        "TemplateData": json.dumps(template_data or {})
+                    }
+                }
+            })
+        else:
+            body = json.dumps({
+                "FromEmailAddress": from_email,
+                "Destination": {
+                    "ToAddresses": [recipient]
+                },
+                "Content": {
+                    "Simple": {
+                        "Subject": {
+                            "Data": subject,
+                            "Charset": "UTF-8"
+                        },
+                        "Body": {
+                            "Text": {
+                                "Data": message,
+                                "Charset": "UTF-8"
+                            }
+                        }
+                    }
+                }
+            })
+        
+        # AWS Signature V4
+        method = 'POST'
+        service = 'ses'
+        host = 'postbox.cloud.yandex.net'
+        region = 'ru-central1'
+        endpoint = f'https://{host}/v2/email/outbound-emails'
+        content_type = 'application/json'
+        
+        t = datetime.utcnow()
+        amz_date = t.strftime('%Y%m%dT%H%M%SZ')
+        date_stamp = t.strftime('%Y%m%d')
+        
+        canonical_uri = '/v2/email/outbound-emails'
+        canonical_querystring = ''
+        canonical_headers = f'content-type:{content_type}\nhost:{host}\nx-amz-date:{amz_date}\n'
+        signed_headers = 'content-type;host;x-amz-date'
+        payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+        canonical_request = f'{method}\n{canonical_uri}\n{canonical_querystring}\n{canonical_headers}\n{signed_headers}\n{payload_hash}'
+        
+        algorithm = 'AWS4-HMAC-SHA256'
+        credential_scope = f'{date_stamp}/{region}/{service}/aws4_request'
+        string_to_sign = f'{algorithm}\n{amz_date}\n{credential_scope}\n' + hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
+        
+        def sign(key, msg):
+            return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+        
+        k_date = sign(('AWS4' + secret_key).encode('utf-8'), date_stamp)
+        k_region = sign(k_date, region)
+        k_service = sign(k_region, service)
+        k_signing = sign(k_service, 'aws4_request')
+        
+        signature = hmac.new(k_signing, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+        authorization_header = f'{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}'
+        
+        headers = {
+            'Content-Type': content_type,
+            'X-Amz-Date': amz_date,
+            'Authorization': authorization_header
+        }
+        
+        print(f"[POSTBOX] Request body: {body}")
+        
+        response = requests.post(
+            endpoint,
+            headers=headers,
+            data=body,
+            auth=(access_key, secret_key),
+            timeout=30
         )
         
-        if template_name:
-            request_params = {
-                'FromEmailAddress': from_email,
-                'Destination': {'ToAddresses': [recipient]},
-                'Content': {
-                    'Template': {
-                        'TemplateName': template_name,
-                        'TemplateData': json.dumps(template_data or {})
-                    }
-                }
-            }
-            print(f"[POSTBOX REQUEST] Templated email:")
-            print(f"[POSTBOX REQUEST] {json.dumps(request_params, indent=2, ensure_ascii=False)}")
-            
-            response = client.send_email(**request_params)
+        print(f"[POSTBOX] Response status: {response.status_code}")
+        print(f"[POSTBOX] Response body: {response.text}")
+        
+        if response.status_code == 200:
+            return 200, response.text
         else:
-            request_params = {
-                'FromEmailAddress': from_email,
-                'Destination': {'ToAddresses': [recipient]},
-                'Content': {
-                    'Simple': {
-                        'Subject': {'Data': subject, 'Charset': 'UTF-8'},
-                        'Body': {'Text': {'Data': message, 'Charset': 'UTF-8'}}
-                    }
-                }
-            }
-            print(f"[POSTBOX REQUEST] Simple email:")
-            print(f"[POSTBOX REQUEST] {json.dumps(request_params, indent=2, ensure_ascii=False)}")
-            
-            response = client.send_email(**request_params)
+            return response.status_code, response.text
         
-        print(f"[POSTBOX RESPONSE] Success:")
-        print(f"[POSTBOX RESPONSE] {json.dumps(response, indent=2, ensure_ascii=False)}")
-        
-        message_id = response.get('MessageId', '')
-        
-        return 200, json.dumps({
-            "status": "sent",
-            "message_id": message_id
-        })
-        
-    except ClientError as e:
-        error_response = e.response
-        print(f"[POSTBOX ERROR] ClientError occurred:")
-        print(f"[POSTBOX ERROR] HTTP Status: {error_response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
-        print(f"[POSTBOX ERROR] Error Code: {error_response.get('Error', {}).get('Code')}")
-        print(f"[POSTBOX ERROR] Error Message: {error_response.get('Error', {}).get('Message')}")
-        print(f"[POSTBOX ERROR] Request ID: {error_response.get('ResponseMetadata', {}).get('RequestId')}")
-        print(f"[POSTBOX ERROR] Full response: {json.dumps(error_response, indent=2, default=str)}")
-        
-        return 500, json.dumps({
-            "error": error_response.get('Error', {}).get('Message', str(e)),
-            "code": error_response.get('Error', {}).get('Code', 'Unknown'),
-            "request_id": error_response.get('ResponseMetadata', {}).get('RequestId'),
-            "http_status": error_response.get('ResponseMetadata', {}).get('HTTPStatusCode')
-        })
     except Exception as e:
         print(f"[POSTBOX ERROR] Unexpected exception:")
         print(f"[POSTBOX ERROR] Type: {type(e).__name__}")
