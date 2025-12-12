@@ -20,16 +20,14 @@ const SandboxSection = ({ providers }: SandboxSectionProps) => {
   const [isSending, setIsSending] = useState(false);
   const [response, setResponse] = useState<any>(null);
 
+  const emailProvider = providers.find(p => p.code === 'ek_email');
+  
   const activeProviders = [
     ...providers.filter(p => p.status === 'working' || p.status === 'configured'),
-    {
-      id: 999,
-      name: 'Email Test (Postbox)',
-      icon: 'Mail',
-      status: 'working',
-      code: 'ek_email',
+    ...(emailProvider ? [{
+      ...emailProvider,
       usesPostbox: true
-    }
+    }] : [])
   ];
 
   const selectedProviderData = activeProviders.find(p => p.code === selectedProvider);
