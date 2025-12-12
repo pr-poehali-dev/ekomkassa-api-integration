@@ -133,59 +133,112 @@ const DashboardSection = ({
           <Tabs defaultValue="auth" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="auth">Аутентификация</TabsTrigger>
-              <TabsTrigger value="sms">SMS</TabsTrigger>
-              <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-              <TabsTrigger value="telegram">Telegram</TabsTrigger>
+              <TabsTrigger value="send">Отправка</TabsTrigger>
+              <TabsTrigger value="email">Email</TabsTrigger>
+              <TabsTrigger value="response">Ответы</TabsTrigger>
             </TabsList>
 
             <TabsContent value="auth" className="space-y-4">
               <div className="bg-background/50 p-4 rounded-lg border border-border">
                 <h4 className="font-semibold mb-2">API Key Authentication</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Все запросы должны содержать API ключ в заголовке:
+                  Все запросы должны содержать API ключ в заголовке X-Api-Key:
                 </p>
                 <code className="block bg-background p-3 rounded text-sm font-mono border border-border">
-                  Authorization: Bearer ek_live_your_api_key_here
+                  X-Api-Key: ek_live_your_api_key_here
                 </code>
+                <p className="text-sm text-muted-foreground mt-3">
+                  API ключи создаются в разделе "API Ключи"
+                </p>
               </div>
             </TabsContent>
 
-            <TabsContent value="sms" className="space-y-4">
+            <TabsContent value="send" className="space-y-4">
               <div className="bg-background/50 p-4 rounded-lg border border-border">
-                <h4 className="font-semibold mb-2">Отправка SMS</h4>
-                <p className="text-sm text-muted-foreground mb-3">POST /api/sms/send</p>
-                <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
+                <h4 className="font-semibold mb-2">Отправка сообщения</h4>
+                <p className="text-sm text-muted-foreground mb-3">POST https://functions.poehali.dev/ace36e55-b169-41f2-9d2b-546f92221bb7</p>
+                <div className="mb-3">
+                  <p className="text-sm font-medium mb-2">Headers:</p>
+                  <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
+{`Content-Type: application/json
+X-Api-Key: ek_live_your_api_key_here`}
+                  </code>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">Body (для мессенджеров):</p>
+                  <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
 {`{
-  "phone": "+79991234567",
-  "message": "Ваш код: 1234"
+  "provider": "ek_max",
+  "recipient": "+79991234567",
+  "message": "Ваш заказ готов!"
 }`}
-                </code>
+                  </code>
+                </div>
+                <p className="text-sm text-muted-foreground mt-3">
+                  provider: код провайдера (ek_max, ek_wa, ek_tg)<br/>
+                  recipient: номер телефона или chat_id<br/>
+                  message: текст сообщения
+                </p>
               </div>
             </TabsContent>
 
-            <TabsContent value="whatsapp" className="space-y-4">
+            <TabsContent value="email" className="space-y-4">
               <div className="bg-background/50 p-4 rounded-lg border border-border">
-                <h4 className="font-semibold mb-2">Отправка WhatsApp сообщения</h4>
-                <p className="text-sm text-muted-foreground mb-3">POST /api/whatsapp/send</p>
-                <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
+                <h4 className="font-semibold mb-2">Отправка Email</h4>
+                <p className="text-sm text-muted-foreground mb-3">POST https://functions.poehali.dev/ace36e55-b169-41f2-9d2b-546f92221bb7</p>
+                <div className="mb-3">
+                  <p className="text-sm font-medium mb-2">Headers:</p>
+                  <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
+{`Content-Type: application/json
+X-Api-Key: ek_live_your_api_key_here`}
+                  </code>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">Body:</p>
+                  <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
 {`{
-  "phone": "+79991234567",
-  "message": "Заказ #1234 готов"
+  "provider": "ek_email",
+  "recipient": "user@example.com",
+  "message": "Текст письма",
+  "subject": "Тема письма"
 }`}
-                </code>
+                  </code>
+                </div>
+                <p className="text-sm text-muted-foreground mt-3">
+                  provider: "ek_email" для Yandex Postbox<br/>
+                  recipient: email адрес получателя<br/>
+                  message: текст письма<br/>
+                  subject: тема (опционально, по умолчанию "Уведомление")
+                </p>
               </div>
             </TabsContent>
 
-            <TabsContent value="telegram" className="space-y-4">
+            <TabsContent value="response" className="space-y-4">
               <div className="bg-background/50 p-4 rounded-lg border border-border">
-                <h4 className="font-semibold mb-2">Отправка Telegram сообщения</h4>
-                <p className="text-sm text-muted-foreground mb-3">POST /api/telegram/send</p>
+                <h4 className="font-semibold mb-2">Успешный ответ (200 OK)</h4>
                 <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
 {`{
-  "chat_id": "123456789",
-  "message": "Новое уведомление"
+  "success": true,
+  "message_id": "msg_abc123def456",
+  "status": "delivered",
+  "provider": "ek_max"
 }`}
                 </code>
+              </div>
+              
+              <div className="bg-background/50 p-4 rounded-lg border border-border">
+                <h4 className="font-semibold mb-2">Ошибка (400/401/500)</h4>
+                <code className="block bg-background p-3 rounded text-sm font-mono border border-border whitespace-pre">
+{`{
+  "success": false,
+  "error": "Invalid API key"
+}`}
+                </code>
+                <p className="text-sm text-muted-foreground mt-3">
+                  401: Неверный API ключ<br/>
+                  400: Неверные параметры или провайдер неактивен<br/>
+                  500: Внутренняя ошибка сервера
+                </p>
               </div>
             </TabsContent>
           </Tabs>
